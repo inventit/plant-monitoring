@@ -1,0 +1,16 @@
+{
+    "name" : "plant-monitoring",
+    "version" : "1.0.0",
+    "description" : "[description]",
+    "maintainers" : [
+        {
+            "name" : "[name]",
+            "email" : "[email]"
+        }
+    ],
+    "bugs" : {
+        "mail" : "[email]"
+    },
+    "main" : "plant-monitoring.so",
+    "models" : {}
+}
