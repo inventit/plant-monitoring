@@ -1,16 +1,28 @@
 {
-    "name" : "plant-monitoring",
-    "version" : "1.0.0",
-    "description" : "[description]",
-    "maintainers" : [
-        {
-            "name" : "[name]",
-            "email" : "[email]"
-        }
-    ],
-    "bugs" : {
-        "mail" : "[email]"
-    },
-    "main" : "plant-monitoring.so",
-    "models" : {}
+  "name" : "plant-monitoring",
+  "version" : "1.0.0",
+  "description" : "an example application of plant monitoring application",
+  "maintainers" : [
+    {
+      "name" : "inventit dev",
+      "email" : "asparagus@yourinventit.com"
+    }
+  ],
+  "bugs" : {
+    "mail" : "iidn-sys-notice@yourinventit.com"
+  },
+  "main" : "plant-monitoring.so",
+  "models" : {
+    "SensingData" : {
+      "array" : true,
+      "shared" : false,
+      "attributes" : {
+        "port" : { "type" : "string" },
+        "temperature" : { "type" : "float" },
+        "humidity" : { "type" : "float" },
+        "moisture" : { "type" : "int32" },
+        "timestamp" : { "type" : "int64" }
+      }
+    }
+  }
 }
