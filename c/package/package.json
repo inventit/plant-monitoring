@@ -17,7 +17,7 @@
       "array" : true,
       "shared" : false,
       "attributes" : {
-        "port" : { "type" : "string" },
+        "serialNumber" : { "type" : "string" },
         "temperature" : { "type" : "float" },
         "humidity" : { "type" : "float" },
         "moisture" : { "type" : "int32" },
