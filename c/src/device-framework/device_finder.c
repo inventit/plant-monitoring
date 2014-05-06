@@ -170,25 +170,15 @@ mdf_device_finder_udev_event_proc(MoatIOWatcher *in_watcher, sse_pointer in_user
 sse_int
 mdf_device_finder_start(MDFDeviceFinder *self, sse_char *in_type, sse_char *in_filter)
 {
-  struct udev_monitor *udev_monitor = NULL;
-  MoatIOWatcher *w = NULL;
   sse_char *subsystem;
   sse_char *type;
   SSEString *filter;
   sse_char *p;
   SSESList *devices;
   struct udev_device *device;
-  sse_int fd;
   sse_int err;
 
   MDFDF_ENTER();
-  udev_monitor = udev_monitor_new_from_netlink(self->UDev, "udev");
-  if (udev_monitor == NULL) {
-    err = SSE_E_GENERIC;
-    goto error_exit;
-  }
-  self->UDevMonitor = udev_monitor;
-  /* add filter */
   if (in_type != NULL) {
     sse_char *dup = NULL;
     dup = sse_strdup(in_type);
@@ -204,7 +194,7 @@ mdf_device_finder_start(MDFDeviceFinder *self, sse_char *in_type, sse_char *in_f
       type = (p + 1);
     }
     MDFDF_LOG_DEBUG("subsystem=[%s], devtype=[%s]", subsystem, type);
-    err = udev_monitor_filter_add_match_subsystem_devtype(udev_monitor, subsystem, type);
+    err = udev_monitor_filter_add_match_subsystem_devtype(self->UDevMonitor, subsystem, type);
     if (err) {
       sse_free(dup);
       goto error_exit;
@@ -224,14 +214,7 @@ mdf_device_finder_start(MDFDeviceFinder *self, sse_char *in_type, sse_char *in_f
     devices = sse_slist_remove(devices, device);
     udev_device_unref(device);
   }
-  err = udev_monitor_enable_receiving(udev_monitor);
-  fd = udev_monitor_get_fd(udev_monitor);
-  w = moat_io_watcher_new(fd, mdf_device_finder_udev_event_proc, self, MOAT_IO_FLAG_READ);
-  if (w == NULL) {
-    goto error_exit;
-  }
-  moat_io_watcher_start(w);
-  self->Monitor = w;
+  moat_io_watcher_start(self->Monitor);
   MDFDF_LEAVE();
 error_exit:
   return err;
@@ -240,13 +223,9 @@ error_exit:
 void
 mdf_device_finder_stop(MDFDeviceFinder *self)
 {
-  if (self->Monitor == NULL) {
-    return;
-  }
   if (moat_io_watcher_is_active(self->Monitor)) {
     moat_io_watcher_stop(self->Monitor);
   }
-  moat_io_watcher_free(self->Monitor);
 }
 
 void
@@ -261,6 +240,10 @@ mdf_device_finder_new(MDFDeviceFinder_DeviceStatusChangedProc in_proc, sse_point
 {
   MDFDeviceFinder *finder = NULL;
   struct udev *udev = NULL;
+  struct udev_monitor *udev_monitor = NULL;
+  MoatIOWatcher *w = NULL;
+  sse_int fd;
+  sse_int err;
 
   finder = sse_zeroalloc(sizeof(MDFDeviceFinder));
   if (finder == NULL) {
@@ -270,12 +253,36 @@ mdf_device_finder_new(MDFDeviceFinder_DeviceStatusChangedProc in_proc, sse_point
   if (udev == NULL) {
     goto error_exit;
   }
+  udev_monitor = udev_monitor_new_from_netlink(udev, "udev");
+  if (udev_monitor == NULL) {
+    goto error_exit;
+  }
+  err = udev_monitor_enable_receiving(udev_monitor);
+  if (err) {
+    goto error_exit;
+  }
+  fd = udev_monitor_get_fd(udev_monitor);
+  if (fd < 0) {
+    goto error_exit;
+  }
+  w = moat_io_watcher_new(fd, mdf_device_finder_udev_event_proc, finder, MOAT_IO_FLAG_READ);
+  if (w == NULL) {
+    goto error_exit;
+  }
   finder->UDev = udev;
+  finder->UDevMonitor = udev_monitor;
+  finder->Monitor = w;
   finder->StatusChangedProc = in_proc;
   finder->StatusChangedParam = in_user_data;
   return finder;
 
 error_exit:
+  if (w != NULL) {
+    moat_io_watcher_free(w);
+  }
+  if (udev_monitor != NULL) {
+    udev_monitor_unref(udev_monitor);
+  }
   if (udev != NULL) {
     udev_unref(udev);
   }
@@ -289,6 +296,8 @@ void
 mdf_device_finder_free(MDFDeviceFinder *self)
 {
   mdf_device_finder_stop(self);
+  moat_io_watcher_free(self->Monitor);
+  udev_monitor_unref(self->UDevMonitor);
   udev_unref(self->UDev);
   sse_free(self);
 }

@@ -81,13 +81,18 @@ DataCollector_HandleDataProc(MDFIO *in_io, sse_int in_flags, sse_pointer in_user
 
   DC_ENTER();
   read_bytes = mdf_io_read(in_io, dc->fBuffer + dc->fReadBytes, sizeof(dc->fBuffer) - dc->fReadBytes);
+  if (read_bytes == 0) {
+    DC_LOG_DEBUG("disconnected.");
+    mdf_io_stop(in_io);
+    mdf_io_close(in_io);
+    return;
+  }
   if (read_bytes <= 0) {
     DC_LOG_ERROR("failed to read. err=[%d]", read_bytes);
     return;
   }
   if (dc->fReadBytes == 0) {
     if (dc->fBuffer[0] != ':') {
-      DC_LOG_ERROR("protocol err.");
       dc->fReadBytes = 0;
       return;
     }
@@ -164,8 +169,12 @@ DataCollector_DeviceStatusChangedProc(MDFDevice *in_device, sse_int in_new_statu
     if (dc->fSerialPort == NULL) {
       return;
     }
-    mdf_io_stop((MDFIO *)dc->fSerialPort);
-    mdf_io_close((MDFIO *)dc->fSerialPort);
+    if (mdf_io_is_started((MDFIO *)dc->fSerialPort)) {
+      mdf_io_stop((MDFIO *)dc->fSerialPort);
+    }
+    if (mdf_io_is_opened((MDFIO *)dc->fSerialPort)) {
+      mdf_io_close((MDFIO *)dc->fSerialPort);
+    }
     mdf_serial_port_free(dc->fSerialPort);
     dc->fSerialPort = NULL;
     break;
