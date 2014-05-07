@@ -23,6 +23,15 @@
         "moisture" : { "type" : "int32" },
         "timestamp" : { "type" : "int64" }
       }
+    },
+    "CapturedImage" : {
+      "array" : true,
+      "shared" : false,
+      "attributes" : {
+        "contentType" : { "type" : "string" },
+        "encodedContent" : { "type" : "string" },
+        "timestamp" : { "type" : "int64" }
+      }
     }
   }
 }

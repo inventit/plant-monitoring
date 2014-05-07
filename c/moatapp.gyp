@@ -12,6 +12,7 @@
         'src/device-framework/serial_port.c',
         'src/device-framework/device_finder.c',
         'src/data_collector.c',
+        'src/image_collector.c',
         'src/<(package_name).c',
        ],
       'product_prefix': '',

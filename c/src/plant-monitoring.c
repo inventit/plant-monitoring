@@ -1,6 +1,6 @@
 #include <servicesync/moat.h>
 #include "data_collector.h"
-#include "image_uploader.h"
+#include "image_collector.h"
 
 static MoatObject *
 create_default_conf(void)
@@ -12,11 +12,11 @@ create_default_conf(void)
   if (conf == NULL) {
     return NULL;
   }
-  err = moat_object_add_int32_value(conf, "dataUploadIntervalSec", 10, sse_true);
+  err = moat_object_add_int64_value(conf, "dataUploadIntervalSec", 10, sse_true);
   if (err) {
     goto error_exit;
   }
-  err = moat_object_add_int32_value(conf, "imageUploadIntervalSec", 3600, sse_true);
+  err = moat_object_add_int64_value(conf, "imageUploadIntervalSec", 3600, sse_true);
   if (err) {
     goto error_exit;
   }
@@ -45,7 +45,7 @@ moat_app_main(sse_int in_argc, sse_char *argv[])
   sse_int err = SSE_E_OK;
   MoatObject *conf = NULL;
   TDataCollector *dc = NULL;
-//  TImageUploader *iu = NULL;
+  TImageCollector *ic = NULL;
 
   pkg_urn = argv[0];
   err = moat_init(pkg_urn, &moat);
@@ -63,29 +63,25 @@ moat_app_main(sse_int in_argc, sse_char *argv[])
   if (dc == NULL) {
     goto error_exit;
   }
-#if 0
-  iu = ImageUploader_New(moat, conf);
-  if (iu == NULL) {
+  ic = ImageCollector_New(moat, pkg_urn, conf);
+  if (ic == NULL) {
     goto error_exit;
   }
-#endif
   err = TDataCollector_Start(dc);
   if (err) {
     goto error_exit;
   }
-#if 0
-  err = TImageUploader_Start(iu);
+  err = TImageCollector_Start(ic);
   if (err) {
     goto error_exit;
   }
-#endif
   err = moat_run(moat);
   if (err != SSE_E_OK) {
     goto error_exit;
   }
-//  TImageUploader_Stop(iu);
+  TImageCollector_Stop(ic);
   TDataCollector_Stop(dc);
-//  TImageUploader_Delete(iu);
+  TImageCollector_Delete(ic);
   TDataCollector_Delete(dc);
   moat_object_free(conf);
   moat_destroy(moat);
@@ -93,14 +89,12 @@ moat_app_main(sse_int in_argc, sse_char *argv[])
 
 error_exit:
 
-#if 0
-  if (iu != NULL) {
-    if (TImageUploader_IsStarted(iu)) {
-      TImageUploader_Stop(iu);
+  if (ic != NULL) {
+    if (TImageCollector_IsStarted(ic)) {
+      TImageCollector_Stop(ic);
     }
-    TImageUploader_Delete(iu);
+    TImageCollector_Delete(ic);
   }
-#endif
   if (dc != NULL) {
     if (TDataCollector_IsStarted(dc)) {
       TDataCollector_Stop(dc);
