@@ -1,0 +1,37 @@
+{
+  "name" : "plant-monitoring",
+  "version" : "1.0.0",
+  "description" : "an example application of plant monitoring application",
+  "maintainers" : [
+    {
+      "name" : "inventit dev",
+      "email" : "asparagus@yourinventit.com"
+    }
+  ],
+  "bugs" : {
+    "mail" : "iidn-sys-notice@yourinventit.com"
+  },
+  "notification": { "http" : "https://plant-monitoring-test.herokuapp.com" },
+  "models" : {
+    "SensingData" : {
+      "array" : true,
+      "shared" : false,
+      "attributes" : {
+        "serialNumber" : { "type" : "string" },
+        "temperature" : { "type" : "float" },
+        "humidity" : { "type" : "float" },
+        "moisture" : { "type" : "int32" },
+        "timestamp" : { "type" : "int64" }
+      }
+    },
+    "CapturedImage" : {
+      "array" : true,
+      "shared" : false,
+      "attributes" : {
+        "contentType" : { "type" : "string" },
+        "encodedContent" : { "type" : "string" },
+        "timestamp" : { "type" : "int64" }
+      }
+    }
+  }
+}
