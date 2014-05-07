@@ -1,0 +1,24 @@
+common: &common
+  adapter: postgresql
+  encoding: utf8
+  reconnect: false
+  pool: 5
+  host: localhost
+  username: plant
+  password: plant
+
+development:
+  <<: *common
+  database: plant_development
+
+test:
+  <<: *common
+  database: plant_test
+
+staging:
+  <<: *common
+  database: plant_staging
+
+production:
+  <<: *common
+  database: plant
