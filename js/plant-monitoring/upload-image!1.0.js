@@ -10,7 +10,8 @@ var session = context.session;
 var clientRequest = context.clientRequest;
 var logTag = 'upload-image'
 
-var WEBAPI_IMAGE = 'https://plant-monitoring-test.herokuapp.com/images/';
+var WEBAPI_IMAGE = 'https://plant-monitoring-test.herokuapp.com/contents/notify_image/';
+//var WEBAPI_IMAGE = 'http://localhost:3000/contents/notify_image/';
 
 session.log(logTag, '--- Image arrived ---');
 

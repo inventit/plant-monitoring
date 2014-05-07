@@ -1,0 +1,20 @@
+<%= link_to 'delete_all', controller: "contents", action: "delete_all" %>
+<br/>
+<table border="1" cellspacing="0" cellpadding="0">
+  <thead>
+    <tr>
+	  <th>Type</th>
+	  <th width="600">Content</th>
+	  <th>Created At</th>
+	</tr>
+  </thead>
+  <tbody>
+    <% @contents.each do |c| %>
+	<tr>
+	  <td><%= c.ctype %></td>
+	  <td width="600"><textarea maxlength="10000000" style="width:98%"><%= c.content %></textarea></td>
+	  <td><%= c.created_at %></td>
+	</tr>
+	<% end %>
+  </tbody>
+</table>

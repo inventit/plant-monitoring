@@ -10,7 +10,8 @@ var session = context.session;
 var clientRequest = context.clientRequest;
 var logTag = 'upload-sensing-data'
 
-var WEBAPI_SENSING_DATA = 'https://plant-monitoring-test.herokuapp.com/sensing-data/';
+var WEBAPI_SENSING_DATA = 'https://plant-monitoring-test.herokuapp.com/contents/notify_sensing_data/';
+//var WEBAPI_SENSING_DATA = 'http://localhost:3000/contents/notify_sensing_data/';
 
 session.log(logTag, '--- Data arrived ---');
 
@@ -23,7 +24,7 @@ var array = rawDataToNotifyData(objects[0].array);
 notifyData(clientRequest.device.deviceId, array);
 
 function rawDataToNotifyData(rawArray) {
-  var  = array[];
+  var array = [];
   for (var i = 0; i < rawArray.length; i++) {
     var e = rawArray[i];
     var entity = {
