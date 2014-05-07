@@ -228,6 +228,12 @@ mdf_device_finder_stop(MDFDeviceFinder *self)
   }
 }
 
+sse_bool
+mdf_device_finder_is_started(MDFDeviceFinder *self)
+{
+  return moat_io_watcher_is_active(self->Monitor);
+}
+
 void
 mdf_device_finder_set_statuc_changed_proc(MDFDeviceFinder *self, MDFDeviceFinder_DeviceStatusChangedProc in_proc, sse_pointer in_user_data)
 {

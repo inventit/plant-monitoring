@@ -24,7 +24,7 @@ SSE_BEGIN_C_DECLS
 
 typedef struct TDataCollector_ TDataCollector;
 
-TDataCollector * DataCollector_New(Moat in_moat, MoatObject *in_conf);
+TDataCollector * DataCollector_New(Moat in_moat, sse_char *in_pkg_urn, MoatObject *in_conf);
 void TDataCollector_Delete(TDataCollector *self);
 sse_int TDataCollector_Start(TDataCollector *self);
 void TDataCollector_Stop(TDataCollector *self);

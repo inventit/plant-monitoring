@@ -42,6 +42,7 @@ sse_int mdf_io_init(MDFIO *in_io);
 void mdf_io_fini(MDFIO *in_io);
 sse_int mdf_io_open(MDFIO *self, sse_int in_flags, MDFIO_EventProc in_proc, sse_pointer in_user_data, sse_int in_event_flags);
 void mdf_io_close(MDFIO *self);
+sse_bool mdf_io_is_opened(MDFIO *self);
 sse_int mdf_io_start(MDFIO *self);
 void mdf_io_stop(MDFIO *self);
 sse_bool mdf_io_is_started(MDFIO *self);

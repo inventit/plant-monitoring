@@ -36,6 +36,7 @@
 
 struct TDataCollector_ {
   Moat fMoat;
+  sse_char *fUploadSensingDataId;
   MoatObject *fConf;
   MDFDeviceFinder *fDeviceFinder;
   MDFSerialPort *fSerialPort;
@@ -43,19 +44,107 @@ struct TDataCollector_ {
   sse_uint fReadBytes;
   sse_char fBuffer[DC_BUFFER_SIZE];
   MoatObject *fSensingData;
+  MoatTimer *fTimer;
+  sse_int fUploadTimerId;
 };
+
+static sse_int
+TDataCollector_UploadSensingData(TDataCollector *self)
+{
+  MoatObject *d = self->fSensingData;
+  sse_int len;
+  sse_int req_id;
+
+  len = moat_object_get_length(d);
+  if (len == 0) {
+    DC_LOG_DEBUG("no sensing data.");
+    return SSE_E_NOENT;
+  }
+  req_id = moat_send_notification(self->fMoat, self->fUploadSensingDataId, NULL, "SensingData", d, NULL, NULL);
+  DC_LOG_DEBUG("noti req_id:[%d]", req_id);
+  moat_object_remove_all(d);
+  return SSE_E_OK;
+}
+
+static sse_bool
+DataCollector_UploadIntervalProc(sse_int in_timer_id, sse_pointer in_user_data)
+{
+  TDataCollector *dc = (TDataCollector *)in_user_data;
+  sse_int err;
+
+  err = TDataCollector_UploadSensingData(dc);
+  if (err) {
+    DC_LOG_ERROR("failed to upload.");
+  }
+  return sse_true;
+}
 
 static MoatObject *
 DataCollector_CreateSensorData(sse_char *in_serial, sse_char *in_json_data)
 {
-  DC_LOG_DEBUG("SN:%s, data:%s", in_serial, in_json_data);
+  sse_int len;
+  MoatObject *data = NULL;
+  sse_char *err_msg = NULL;
+  sse_uint64 ts;
+  sse_int err;
+
+  len = sse_strlen(in_json_data);
+  err = moat_json_string_to_moat_object(in_json_data, len, &data, &err_msg);
+  if (err) {
+    DC_LOG_ERROR("failed to convert json to moat object. err=[%s]", err_msg);
+    goto error_exit;
+  }
+  len = sse_strlen(in_serial);
+  err = moat_object_add_string_value(data, "serialNumber", in_serial, len, sse_true, sse_true);
+  if (err) {
+    DC_LOG_ERROR("failed to add 'serialNumber'");
+    goto error_exit;
+  }
+  ts = moat_get_timestamp_msec();
+  err = moat_object_add_int64_value(data, "timestamp", ts, sse_true);
+  if (err) {
+    DC_LOG_ERROR("failed to add 'timestamp'");
+    goto error_exit;
+  }
+  return data;
+
+error_exit:
+  if (err_msg != NULL) {
+    sse_free(err_msg);
+  }
+  if (data != NULL) {
+    moat_object_free(data);
+  }
   return NULL;
+}
+
+static sse_int
+TDataCollector_AddSensingData(TDataCollector *self, sse_char *in_str)
+{
+  MoatObject *data;
+  MoatUUID uuid;
+  sse_char uuid_str[MOAT_UUID_STRING_BUF_SIZE];
+  sse_int err;
+
+  data = DataCollector_CreateSensorData(self->fSerialNumber, in_str);
+  if (data == NULL) {
+    return SSE_E_GENERIC;
+  }
+  moat_uuid_generate(&uuid);
+  moat_uuid_to_string(&uuid, uuid_str);
+  err = moat_object_add_object_value(self->fSensingData, uuid_str, data, sse_false, sse_true);
+  if (err) {
+    moat_object_free(data);
+    return err;
+  }
+  return SSE_E_OK;
 }
 
 static void
 TDataCollector_HandleCommand(TDataCollector *self)
 {
   sse_char *cmd = self->fBuffer;
+  sse_int err;
 
   if (sse_strlen(cmd) > DC_VER_CMD_HEADER_LEN && sse_strncmp(cmd, ":VER:", DC_VER_CMD_HEADER_LEN) == 0) {
     cmd += DC_VER_CMD_HEADER_LEN;
@@ -65,7 +154,7 @@ TDataCollector_HandleCommand(TDataCollector *self)
     DC_LOG_ERROR("Sensor Error:[%s]", cmd);
   } else if (sse_strlen(cmd) > DC_DATA_CMD_HEADER_LEN && sse_strncmp(cmd, ":DATA:", DC_DATA_CMD_HEADER_LEN) == 0) {
     cmd += DC_DATA_CMD_HEADER_LEN;
-    DataCollector_CreateSensorData(self->fSerialNumber, cmd);
+    err = TDataCollector_AddSensingData(self, cmd);
     DC_LOG_DEBUG("Sensor Data:[%s]", cmd);
   } else {
     DC_LOG_DEBUG("Command:[%s]", cmd);
@@ -118,6 +207,8 @@ DataCollector_DeviceStatusChangedProc(MDFDevice *in_device, sse_int in_new_statu
   MDFSerialPort *serial_port = NULL;
   MDFSerialAttributes attr;
   sse_int fd;
+  sse_int64 interval;
+  sse_int timer_id;
   sse_int err;
 
   DC_ENTER();
@@ -162,10 +253,23 @@ DataCollector_DeviceStatusChangedProc(MDFDevice *in_device, sse_int in_new_statu
       DC_LOG_ERROR("failed to start io.");
       goto error_exit;
     }
+    err = moat_object_get_int64_value(dc->fConf, "dataUploadIntervalSec", &interval);
+    if (err) {
+      DC_LOG_ERROR("failed to get conf.");
+      goto error_exit;
+    }
+    timer_id = moat_timer_set(dc->fTimer, interval, DataCollector_UploadIntervalProc, dc);
+    if (timer_id < 0) {
+      DC_LOG_ERROR("failed to set upload timer.");
+      err = timer_id;
+      goto error_exit;
+    }
     dc->fSerialPort = serial_port;
     dc->fSerialNumber = sn;
+    dc->fUploadTimerId = timer_id;
     break;
   case MDF_DEVICE_STATUS_REMOVE:
+    moat_timer_cancel(dc->fTimer, dc->fUploadTimerId);
     if (dc->fSerialPort == NULL) {
       return;
     }
@@ -229,6 +333,7 @@ error_exit:
 void
 TDataCollector_Stop(TDataCollector *self)
 {
+  mdf_device_finder_stop(self->fDeviceFinder);
   moat_unregister_model(self->fMoat, "SensingData");
 }
 
@@ -239,11 +344,13 @@ TDataCollector_IsStarted(TDataCollector *self)
 }
 
 TDataCollector *
-DataCollector_New(Moat in_moat, MoatObject *in_conf)
+DataCollector_New(Moat in_moat, sse_char *in_urn, MoatObject *in_conf)
 {
   TDataCollector *dc = NULL;
   MDFDeviceFinder *finder = NULL;
   MoatObject *obj = NULL;
+  sse_char *noti_id = NULL;
+  MoatTimer *timer = NULL;
 
   DC_ENTER();
   dc = sse_malloc(sizeof(TDataCollector));
@@ -254,23 +361,39 @@ DataCollector_New(Moat in_moat, MoatObject *in_conf)
   if (finder == NULL) {
     goto error_exit;
   }
+  noti_id = moat_create_notification_id(in_urn, "upload-sensing-data", "1.0");
+  if (noti_id == NULL) {
+    goto error_exit;
+  }
   obj = moat_object_new();
   if (obj == NULL) {
+    goto error_exit;
+  }
+  timer = moat_timer_new();
+  if (timer == NULL) {
     goto error_exit;
   }
   dc->fMoat = in_moat;
   dc->fConf = in_conf;
   dc->fDeviceFinder = finder;
+  dc->fUploadSensingDataId = noti_id;
   dc->fReadBytes = 0;
   sse_memset(dc->fBuffer, 0, sizeof(dc->fBuffer));
   dc->fSerialPort = NULL;
   dc->fSensingData = obj;
+  dc->fTimer = timer;
   DC_LEAVE();
   return dc;
 
 error_exit:
+  if (timer != NULL) {
+    moat_timer_free(timer);
+  }
   if (obj != NULL) {
     moat_object_free(obj);
+  }
+  if (noti_id != NULL) {
+    sse_free(noti_id);
   }
   if (finder != NULL) {
     mdf_device_finder_free(finder);
@@ -284,7 +407,9 @@ error_exit:
 void
 TDataCollector_Delete(TDataCollector *self)
 {
+  moat_timer_free(self->fTimer);
   moat_object_free(self->fSensingData);
+  sse_free(self->fUploadSensingDataId);
   mdf_device_finder_free(self->fDeviceFinder);
   sse_free(self);
 }

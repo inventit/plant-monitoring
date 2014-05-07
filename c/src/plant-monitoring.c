@@ -1,6 +1,5 @@
 #include <servicesync/moat.h>
 #include "data_collector.h"
-#include "data_uploader.h"
 #include "image_uploader.h"
 
 static MoatObject *
@@ -41,13 +40,15 @@ error_exit:
 sse_int
 moat_app_main(sse_int in_argc, sse_char *argv[])
 {
+  sse_char *pkg_urn;
   Moat moat = NULL;
   sse_int err = SSE_E_OK;
   MoatObject *conf = NULL;
   TDataCollector *dc = NULL;
 //  TImageUploader *iu = NULL;
 
-  err = moat_init(argv[0], &moat);
+  pkg_urn = argv[0];
+  err = moat_init(pkg_urn, &moat);
   if (err != SSE_E_OK) {
     goto error_exit;
   }
@@ -58,7 +59,7 @@ moat_app_main(sse_int in_argc, sse_char *argv[])
       goto error_exit;
     }
   }
-  dc = DataCollector_New(moat, conf);
+  dc = DataCollector_New(moat, pkg_urn, conf);
   if (dc == NULL) {
     goto error_exit;
   }
