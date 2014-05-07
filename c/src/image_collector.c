@@ -42,7 +42,7 @@ struct TImageCollector_ {
   MoatObject *fConf;
   MoatTimer *fTimer;
   sse_int fIntervalTimerId;
-  ev_child fChildWatcher;
+  ev_signal fChildWatcher;
   sse_int fCurrentChildId;
 };
 
@@ -161,15 +161,15 @@ TImageCollector_UploadImage(TImageCollector *self)
 }
 
 static void
-TImageCollector_ChildCallback(struct ev_loop *loop, ev_child *w, int revents)
+TImageCollector_ChildCallback(struct ev_loop *loop, ev_signal *w, int revents)
 {
   TImageCollector *ic = (TImageCollector *)w->data;
   sse_int status;
 
   IC_ENTER();
-  ev_child_stop(loop, w);
-  IC_LOG_DEBUG("process %d exited with status %x", w->rpid, w->rstatus);
-  waitpid(w->rpid, &status, WNOHANG);
+  ev_signal_stop(loop, w);
+  IC_LOG_DEBUG("process %d exited", ic->fCurrentChildId);
+  waitpid(ic->fCurrentChildId, &status, WNOHANG);
   ic->fCurrentChildId = -1;
   TImageCollector_UploadImage(ic);
   IC_LEAVE();
@@ -182,6 +182,7 @@ TImageCollector_DoCapture(TImageCollector *self)
   struct ev_loop *loop;
   int err;
 
+  IC_ENTER();
   if (self->fCurrentChildId >= 0) {
     IC_LOG_INFO("");
     return SSE_E_INVAL;
@@ -195,10 +196,9 @@ TImageCollector_DoCapture(TImageCollector *self)
     exit(err);
   }
   self->fCurrentChildId = child;
-  ev_child_init(&self->fChildWatcher, TImageCollector_ChildCallback, child, 0);
-  self->fChildWatcher.data = self;
   loop = ev_default_loop(0);
-  ev_child_start(loop, &self->fChildWatcher);
+  ev_signal_start(loop, &self->fChildWatcher);
+  IC_LEAVE();
   return SSE_E_OK;
 }
 
@@ -225,6 +225,7 @@ TImageCollector_Start(TImageCollector *self)
   sse_int timer_id;
   sse_int err;
 
+  IC_ENTER();
   sse_memset(&m, 0, sizeof(m));
   err = moat_register_model(self->fMoat, "CapturedImage", &m, self);
   if (err) {
@@ -242,6 +243,7 @@ TImageCollector_Start(TImageCollector *self)
     goto error_exit;
   }
   self->fIntervalTimerId = timer_id;
+  IC_LEAVE();
   return SSE_E_OK;
 
 error_exit:
@@ -288,6 +290,8 @@ ImageCollector_New(Moat in_moat, sse_char *in_urn, MoatObject *in_conf)
   ic->fTimer = timer;
   ic->fIntervalTimerId = -1;
   ic->fCurrentChildId = -1;
+  ev_signal_init(&ic->fChildWatcher, TImageCollector_ChildCallback, SIGCHLD);
+  ic->fChildWatcher.data = ic;
   IC_LEAVE();
   return ic;
 
