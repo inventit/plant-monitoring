@@ -30,8 +30,8 @@ function rawDataToNotifyData(rawArray) {
     var entity = {
       uid : e.uid,
       serialNumber : e.serialNumber,
-      temperature : e.temperature,
-      humidity : e.humidity,
+      temperature : parseFloat(e.temperature),
+      humidity : parseFloat(e.humidity),
       moisture : e.moisture,
       timestamp : e.timestamp
     };
