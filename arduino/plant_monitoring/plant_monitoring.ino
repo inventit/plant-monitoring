@@ -6,7 +6,7 @@
 #include <dht.h>
 
 #define BAUDRATE 57600
-#define SENSING_INTERVAL_MS 1000
+#define SENSING_INTERVAL_MS 5000
 #define AM2302_PIN 2
 #define SEN0114_PIN 0
 
