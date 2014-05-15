@@ -42,5 +42,9 @@
 #include <servicesync/moat/moatuuid.h>
 #include <servicesync/moat/moatlog.h>
 #include <servicesync/moat/moatutils.h>
+#include <servicesync/moat/mdfio.h>
+#include <servicesync/moat/mdfdevice.h>
+#include <servicesync/moat/mdffinder.h>
+#include <servicesync/moat/mdfserialport.h>
 
 #endif /* MOAT_H_ */
