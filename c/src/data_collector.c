@@ -18,7 +18,6 @@
 
 #include <fcntl.h>
 #include <servicesync/moat.h>
-#include "device_framework.h"
 #include "data_collector.h"
 
 #define DC_DEFAULT_BAUDRATE MDF_SERIAL_BR_57600
@@ -38,7 +37,7 @@ struct TDataCollector_ {
   Moat fMoat;
   sse_char *fUploadSensingDataId;
   MoatObject *fConf;
-  MDFDeviceFinder *fDeviceFinder;
+  MDFFinder *fDeviceFinder;
   MDFSerialPort *fSerialPort;
   sse_char *fSerialNumber;
   sse_uint fReadBytes;
@@ -320,7 +319,7 @@ TDataCollector_Start(TDataCollector *self)
   if (err) {
     goto error_exit;
   }
-  err = mdf_device_finder_start(self->fDeviceFinder, type, filter);
+  err = mdf_finder_start(self->fDeviceFinder, type, filter);
   if (err) {
     goto error_exit;
   }
@@ -333,21 +332,21 @@ error_exit:
 void
 TDataCollector_Stop(TDataCollector *self)
 {
-  mdf_device_finder_stop(self->fDeviceFinder);
+  mdf_finder_stop(self->fDeviceFinder);
   moat_unregister_model(self->fMoat, "SensingData");
 }
 
 sse_bool
 TDataCollector_IsStarted(TDataCollector *self)
 {
-  return mdf_device_finder_is_started(self->fDeviceFinder);
+  return mdf_finder_is_started(self->fDeviceFinder);
 }
 
 TDataCollector *
 DataCollector_New(Moat in_moat, sse_char *in_urn, MoatObject *in_conf)
 {
   TDataCollector *dc = NULL;
-  MDFDeviceFinder *finder = NULL;
+  MDFFinder *finder = NULL;
   MoatObject *obj = NULL;
   sse_char *noti_id = NULL;
   MoatTimer *timer = NULL;
@@ -357,7 +356,7 @@ DataCollector_New(Moat in_moat, sse_char *in_urn, MoatObject *in_conf)
   if (dc == NULL) {
     goto error_exit;
   }
-  finder = mdf_device_finder_new(DataCollector_DeviceStatusChangedProc, dc);
+  finder = mdf_finder_new(DataCollector_DeviceStatusChangedProc, dc);
   if (finder == NULL) {
     goto error_exit;
   }
@@ -396,7 +395,7 @@ error_exit:
     sse_free(noti_id);
   }
   if (finder != NULL) {
-    mdf_device_finder_free(finder);
+    mdf_finder_free(finder);
   }
   if (dc != NULL) {
     sse_free(dc);
@@ -410,6 +409,6 @@ TDataCollector_Delete(TDataCollector *self)
   moat_timer_free(self->fTimer);
   moat_object_free(self->fSensingData);
   sse_free(self->fUploadSensingDataId);
-  mdf_device_finder_free(self->fDeviceFinder);
+  mdf_finder_free(self->fDeviceFinder);
   sse_free(self);
 }
